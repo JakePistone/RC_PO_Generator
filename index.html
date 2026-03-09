@@ -332,9 +332,14 @@
       if (csv.toLowerCase().includes('<html')) {
         throw new Error('Received HTML instead of CSV. Confirm the sheet is published to web.');
       }
-      if (!window.Papa) throw new Error('PapaParse not loaded');
-      const parsed = Papa.parse(csv, { skipEmptyLines: true });
-      const rows = parsed.data || [];
+      let rows = [];
+      if (window.Papa) {
+        const parsed = Papa.parse(csv, { skipEmptyLines: true });
+        rows = parsed.data || [];
+      } else {
+        const lines = csv.replace(/\r\n/g, '\n').split('\n');
+        rows = lines.map(parseCsvLine).filter(r => r.length > 0);
+      }
       if (rows.length < 2) throw new Error('No data');
       projectNameList = [];
       projectRowMap = new Map();
@@ -343,6 +348,8 @@
         const shipTo = cleanCell(r[2]); // Column C
         const rcNumber = cleanCell(r[7]); // Column H
         if (!projectName) continue;
+        const nameLower = projectName.toLowerCase();
+        if (nameLower === 'project_name' || nameLower === 'project name') continue;
         if (projectRowMap.has(projectName.toLowerCase())) continue;
         projectNameList.push(projectName);
         projectRowMap.set(projectName.toLowerCase(), { projectName, shipTo, rcNumber });
