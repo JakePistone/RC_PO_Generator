@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RC Purchase Order Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --primary:#1a56db;--primary-hover:#1e40af;--secondary:#f3f4f6;
+      --text:#1f2937;--text-light:#6b7280;--border:#d1d5db;
+      --radius:12px;--shadow:0 10px 15px -3px rgba(0,0,0,.1);
+      --transition:all .2s ease;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Inter',sans-serif;
+      background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);
+      color:var(--text);line-height:1.6;padding:2rem;min-height:100vh;
+    }
+    .container{max-width:960px;margin:0 auto;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #e5e7eb}
+    header{
+      background:linear-gradient(135deg,#1e40af 0%,#1a56db 100%);
+      color:#fff;padding:2rem 2.5rem;text-align:center;position:relative;
+    }
+    header::before{
+      content:'';position:absolute;inset:0;
+      background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M0,0 L100,30 L100,100 L0,100 Z" fill="rgba(255,255,255,.05)"/></svg>') no-repeat bottom;
+      background-size:cover;
+    }
+    .logo{display:flex;align-items:center;justify-content:center;gap:.75rem;margin-bottom:.5rem}
+    .logo i{font-size:2rem}
+    .logo span{font-size:1.5rem;font-weight:700}
+    header h1{font-size:1.75rem;font-weight:700;margin:0}
+    header p{font-size:.95rem;opacity:.9;margin-top:.5rem}
+    .content{padding:2.5rem}
+    .step{margin-bottom:2rem;background:#fff;border-radius:var(--radius);padding:1.5rem;border:1px solid #e5e7eb}
+    .step:hover{box-shadow:0 4px 6px -1px rgba(0,0,0,.05)}
+    .step-label{display:flex;align-items:center;font-weight:600;color:var(--text);margin-bottom:.75rem;font-size:1.05rem}
+    .step-number{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--primary);color:#fff;border-radius:50%;font-size:.9rem;font-weight:700;margin-right:.75rem;box-shadow:0 2px 4px rgba(26,86,219,.2)}
+    input[type=file],select,textarea,input[type=text],input[type=date],input[type=number]{
+      width:100%;padding:.875rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.95rem;transition:var(--transition);background:#fff
+    }
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.15)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+    .row{display:grid;grid-template-columns:1fr 160px 36px;gap:8px;align-items:center;margin-bottom:.5rem}
+    .row button{height:36px;border-radius:10px;border:1px solid var(--border);background:#f3f4f6;cursor:pointer}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.875rem 1.75rem;font-size:1rem;font-weight:600;color:#fff;background:var(--primary);border:none;border-radius:var(--radius);cursor:pointer;transition:var(--transition);box-shadow:0 4px 6px -1px rgba(26,86,219,.2);min-width:200px
+    }
+    .btn:hover:not(:disabled){background:var(--primary-hover);transform:translateY(-1px)}
+    .btn:disabled{background:#9ca3af;cursor:not-allowed;opacity:.7}
+    .btn-secondary{background:#fff;color:var(--text);border:1.5px solid var(--border);box-shadow:none}
+    .status{margin-top:.75rem;color:var(--text-light);font-weight:500;font-size:.9rem;display:flex;align-items:center;gap:.5rem}
+    @media(max-width:820px){
+      body{padding:1rem}
+      .content{padding:1.5rem}
+      header{padding:1.5rem}
+      .grid{grid-template-columns:1fr}
+      .row{grid-template-columns:1fr 1fr}
+      .row button{grid-column:1/-1}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo"><i class="fas fa-hard-hat"></i><span>Reserve Construction</span></div>
+    <h1>RC Purchase Order Generator</h1>
+    <p>Auto-fill and generate a Word purchase order</p>
+  </header>
+  <div class="content">
+    <div class="step">
+      <div class="step-label"><span class="step-number">1</span> Purchase Order Info</div>
+      <div style="margin-bottom:1rem;">
+        <input id="vendorFilter" class="filter-input" type="text" placeholder="Filter vendors..." />
+        <select id="vendorSelect" size="8">
+          <option>-- Loading vendors... --</option>
+        </select>
+        <div class="status" id="vendorStatus">Loading vendors...</div>
+      </div>
+      <div class="grid">
+        <input id="vendor" type="text" placeholder="Vendor" />
+        <input id="date" type="date" />
+        <input id="projectName" type="text" placeholder="Project Name" />
+        <input id="poNumber" type="text" placeholder="PO #" />
+        <input id="rcProject" type="text" placeholder="RC Project #" />
+        <input id="shipTo" type="text" placeholder="Ship To" />
+      </div>
+      <div style="margin-top:1rem;">
+        <input id="projectFilter" class="filter-input" type="text" placeholder="Filter projects..." />
+        <select id="projectSelect" size="6">
+          <option>-- Loading projects... --</option>
+        </select>
+        <div class="status" id="projectStatus">Loading projects...</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-label"><span class="step-number">2</span> Line Items</div>
+      <div id="rows"></div>
+      <button class="btn btn-secondary" id="addRow" type="button"><i class="fas fa-plus"></i> Add Line</button>
+      <div class="status">Up to 23 line items will be written into the template.</div>
+    </div>
+
+    <div class="step">
+      <div class="step-label"><span class="step-number">3</span> Totals</div>
+      <div class="grid">
+        <input id="subtotal" type="text" placeholder="Subtotal" disabled />
+        <input id="tax" type="number" step="0.01" placeholder="Tax" />
+        <input id="total" type="text" placeholder="Total" disabled />
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-label"><span class="step-number">4</span> Template & Generate</div>
+      <input type="file" id="templateFile" accept=".docx" />
+      <div style="margin-top:0.75rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button id="generateDocx" class="btn" type="button"><i class="fas fa-file-word"></i> Generate DOCX</button>
+        <button id="reset" class="btn btn-secondary" type="button">Reset</button>
+      </div>
+      <div class="status" id="generateStatus">Upload a template with placeholders like [VENDOR], [PROJECT_NAME], [PO_NUMBER].</div>
+    </div>
+  </div>
+</div>
+
+<script src="../libs/pizzip.min.js"></script>
+<script src="../libs/docxtemplater.min.js"></script>
+<script src="../libs/FileSaver.min.js"></script>
+<script src="../libs/papaparse.min.js"></script>
+<script>
+  const rowsEl = document.getElementById('rows');
+  const addRowBtn = document.getElementById('addRow');
+  const templateFile = document.getElementById('templateFile');
+  const generateDocxBtn = document.getElementById('generateDocx');
+  const generateStatus = document.getElementById('generateStatus');
+  const taxEl = document.getElementById('tax');
+  const subtotalEl = document.getElementById('subtotal');
+  const totalEl = document.getElementById('total');
+  const vendorInput = document.getElementById('vendor');
+  const vendorFilter = document.getElementById('vendorFilter');
+  const vendorSelect = document.getElementById('vendorSelect');
+  const vendorStatus = document.getElementById('vendorStatus');
+  const projectNameInput = document.getElementById('projectName');
+  const rcProjectInput = document.getElementById('rcProject');
+  const shipToInput = document.getElementById('shipTo');
+  const projectFilter = document.getElementById('projectFilter');
+  const projectSelect = document.getElementById('projectSelect');
+  const projectStatus = document.getElementById('projectStatus');
+
+  const VENDOR_CSV_URLS = [
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTAglQKh5LNKfEHW8FQBX3fNh0GQGqigt-FqxwQP3ad8gPn3XJ-SidxlT1pHgjVA0iSWElgZIQ_0vJ5/pub?output=csv&single=true&gid=0",
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTAglQKh5LNKfEHW8FQBX3fNh0GQGqigt-FqxwQP3ad8gPn3XJ-SidxlT1pHgjVA0iSWElgZIQ_0vJ5/pub?output=csv"
+  ];
+  const PROJECT_NAME_CSV_URLS = [
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4sii9RCAZ6PgiX58L7khgSfp5dOSR3DFNd5OXkrgNmO3xQCly-JlqmjPmWe2HpymVU4sIfYwrRVh/pub?output=csv&single=true&gid=0",
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4sii9RCAZ6PgiX58L7khgSfp5dOSR3DFNd5OXkrgNmO3xQCly-JlqmjPmWe2HpymVU4sIfYwrRVh/pub?output=csv"
+  ];
+  const VENDOR_HEADER = "COMPANYTITLE";
+  let vendorList = [];
+  let projectNameList = [];
+  let projectRowMap = new Map();
+
+  function formatMoney(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const num = parseFloat(raw.replace(/[^0-9.-]/g, ''));
+    if (Number.isNaN(num)) return raw;
+    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function addRow(data = {}) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <input class="desc" placeholder="Description" value="${data.desc || ''}" />
+      <input class="amt" type="number" step="0.01" placeholder="Amount" value="${data.amt || ''}" />
+      <button type="button" class="remove">-</button>
+    `;
+    row.querySelector('.remove').addEventListener('click', () => {
+      row.remove();
+      recalcTotals();
+    });
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', recalcTotals));
+    rowsEl.appendChild(row);
+  }
+
+  function recalcTotals() {
+    let subtotal = 0;
+    document.querySelectorAll('.amt').forEach(i => {
+      const v = parseFloat(i.value || '0');
+      if (!Number.isNaN(v)) subtotal += v;
+    });
+    const tax = parseFloat(taxEl.value || '0') || 0;
+    const total = subtotal + tax;
+    subtotalEl.value = formatMoney(subtotal.toFixed(2));
+    totalEl.value = formatMoney(total.toFixed(2));
+  }
+
+  function cleanCell(value) {
+    return String(value || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function parseCsvLine(line) {
+    if (!line) return [''];
+    const out = [];
+    let inQuotes = false;
+    let field = '';
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === ',' && !inQuotes) {
+        out.push(field);
+        field = '';
+      } else {
+        field += ch;
+      }
+    }
+    out.push(field);
+    return out.map(v => v.trim());
+  }
+
+  function parseFirstCsvField(line) {
+    if (!line) return '';
+    return parseCsvLine(line)[0] || '';
+  }
+
+  function renderVendorOptions(filterText = '') {
+    const filter = filterText.trim().toLowerCase();
+    vendorSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = filter ? 'Select a match' : '-- Select Vendor --';
+    vendorSelect.appendChild(placeholder);
+
+    const filtered = filter
+      ? vendorList.filter(name => name.toLowerCase().includes(filter))
+      : vendorList;
+
+    for (const name of filtered) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      vendorSelect.appendChild(opt);
+    }
+
+    vendorStatus.innerHTML = `${vendorList.length} vendor${vendorList.length !== 1 ? 's' : ''} loaded`;
+  }
+
+  async function loadVendors() {
+    try {
+      let csv = '';
+      let lastErr = null;
+      for (const url of VENDOR_CSV_URLS) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          csv = await res.text();
+          if (csv && csv.trim()) break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      if (!csv) throw lastErr || new Error('Empty CSV');
+      if (csv.toLowerCase().includes('<html')) {
+        throw new Error('Received HTML instead of CSV. Confirm the sheet is published to web.');
+      }
+      const lines = csv.replace(/\r\n/g, '\n').split('\n');
+      const names = [];
+      for (const line of lines) {
+        const value = parseFirstCsvField(line);
+        if (!value) continue;
+        if (value.trim().toUpperCase() === VENDOR_HEADER) continue;
+        names.push(cleanCell(value));
+      }
+      const seen = new Set();
+      vendorList = names.filter(n => {
+        const key = n.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a, b) => a.localeCompare(b));
+      renderVendorOptions('');
+    } catch (err) {
+      vendorStatus.textContent = `Failed to load vendors: ${err.message}`;
+    }
+  }
+
+  function renderProjectOptions(selectEl, statusEl, list, filterText = '') {
+    const filter = filterText.trim().toLowerCase();
+    selectEl.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = filter ? 'Select a match' : '-- Select Project --';
+    selectEl.appendChild(placeholder);
+
+    const filtered = filter
+      ? list.filter(name => name.toLowerCase().includes(filter))
+      : list;
+
+    for (const name of filtered) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      selectEl.appendChild(opt);
+    }
+    statusEl.textContent = `${list.length} project${list.length !== 1 ? 's' : ''} loaded`;
+  }
+
+  async function loadProjectNames() {
+    try {
+      let csv = '';
+      let lastErr = null;
+      for (const url of PROJECT_NAME_CSV_URLS) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          csv = await res.text();
+          if (csv && csv.trim()) break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      if (!csv) throw lastErr || new Error('Empty CSV');
+      if (csv.toLowerCase().includes('<html')) {
+        throw new Error('Received HTML instead of CSV. Confirm the sheet is published to web.');
+      }
+      if (!window.Papa) throw new Error('PapaParse not loaded');
+      const parsed = Papa.parse(csv, { skipEmptyLines: true });
+      const rows = parsed.data || [];
+      if (rows.length < 2) throw new Error('No data');
+      projectNameList = [];
+      projectRowMap = new Map();
+      for (const r of rows.slice(1)) {
+        const projectName = cleanCell(r[1]); // Column B
+        const shipTo = cleanCell(r[2]); // Column C
+        const rcNumber = cleanCell(r[7]); // Column H
+        if (!projectName) continue;
+        if (projectRowMap.has(projectName.toLowerCase())) continue;
+        projectNameList.push(projectName);
+        projectRowMap.set(projectName.toLowerCase(), { projectName, shipTo, rcNumber });
+      }
+      projectNameList.sort((a, b) => a.localeCompare(b));
+      renderProjectOptions(projectSelect, projectStatus, projectNameList, '');
+    } catch (err) {
+      projectStatus.textContent = `Failed to load: ${err.message}`;
+    }
+  }
+
+  addRowBtn.addEventListener('click', () => addRow());
+  taxEl.addEventListener('input', recalcTotals);
+  vendorFilter.addEventListener('input', () => renderVendorOptions(vendorFilter.value));
+  vendorSelect.addEventListener('change', () => {
+    if (vendorSelect.value) vendorInput.value = vendorSelect.value;
+  });
+  projectFilter.addEventListener('input', () => renderProjectOptions(projectSelect, projectStatus, projectNameList, projectFilter.value));
+  projectSelect.addEventListener('change', () => {
+    if (!projectSelect.value) return;
+    projectNameInput.value = projectSelect.value;
+    const row = projectRowMap.get(projectSelect.value.toLowerCase());
+    if (row) {
+      rcProjectInput.value = row.rcNumber || '';
+      shipToInput.value = row.shipTo || '';
+    }
+  });
+
+  function collectPlaceholderData() {
+    const data = {};
+    const get = (id) => (document.getElementById(id)?.value || '').trim();
+
+    data.VENDOR = get('vendor');
+    data.DATE = get('date');
+    data.PROJECT_NAME = get('projectName');
+    data.PO_NUMBER = get('poNumber');
+    data.RC_PROJECT_NUMBER = get('rcProject');
+    data.SHIP_TO = get('shipTo');
+
+    const rows = Array.from(document.querySelectorAll('.row'));
+    for (let i = 0; i < 23; i++) {
+      const row = rows[i];
+      const idx = i + 1;
+      if (!row) {
+        data[`DESCRIPTION_${idx}`] = '';
+        data[`AMOUNT_${idx}`] = '';
+        continue;
+      }
+      data[`DESCRIPTION_${idx}`] = row.querySelector('.desc').value.trim();
+      data[`AMOUNT_${idx}`] = formatMoney(row.querySelector('.amt').value.trim());
+    }
+
+    data.SUBTOTAL = subtotalEl.value;
+    data.TAX = formatMoney(get('tax'));
+    data.TOTAL = totalEl.value;
+
+    return data;
+  }
+
+  async function generateDocx() {
+    if (!templateFile.files || !templateFile.files[0]) {
+      generateStatus.textContent = 'Please upload a .docx template first.';
+      return;
+    }
+    generateStatus.textContent = 'Generating...';
+    try {
+      if (!window.PizZip || !window.docxtemplater || !window.saveAs) {
+        throw new Error('Template libraries not loaded. Ensure libs are available.');
+      }
+      const content = await templateFile.files[0].arrayBuffer();
+      const zip = new PizZip(content);
+      const doc = new docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: '[', end: ']' },
+        nullGetter: () => ''
+      });
+      const data = collectPlaceholderData();
+      doc.setData(data);
+      doc.render();
+      const blob = doc.getZip().generate({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+      saveAs(blob, 'Purchase_Order.docx');
+      generateStatus.textContent = 'Generated successfully.';
+    } catch (err) {
+      generateStatus.textContent = `Generate failed: ${err.message}`;
+    }
+  }
+
+  generateDocxBtn.addEventListener('click', generateDocx);
+
+  document.getElementById('reset').addEventListener('click', () => {
+    document.querySelectorAll('input').forEach(i => {
+      if (!i.disabled) i.value = '';
+    });
+    rowsEl.innerHTML = '';
+    addRow();
+    addRow();
+    recalcTotals();
+  });
+
+  addRow();
+  addRow();
+  recalcTotals();
+  loadVendors();
+  loadProjectNames();
+</script>
+</body>
+</html>
