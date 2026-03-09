@@ -117,7 +117,7 @@
       <div class="step-label"><span class="step-number">4</span> Template & Generate</div>
       <input type="file" id="templateFile" accept=".docx" />
       <div style="margin-top:0.75rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
-        <button id="generateDocx" class="btn" type="button"><i class="fas fa-file-word"></i> Generate DOCX</button>
+        <button id="generateDocx" class="btn" type="button" disabled><i class="fas fa-file-word"></i> Generate DOCX</button>
         <button id="reset" class="btn btn-secondary" type="button">Reset</button>
       </div>
       <div class="status" id="generateStatus">Upload a template with placeholders like [VENDOR], [PROJECT_NAME], [PO_NUMBER].</div>
@@ -130,6 +130,24 @@
 <script src="./libs/FileSaver.min.js"></script>
 <script src="./libs/papaparse.min.js"></script>
 <script>
+  (function loadFallbacks() {
+    function load(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    const tasks = [];
+    if (!window.PizZip) tasks.push(load('https://unpkg.com/pizzip@3.1.4/dist/pizzip.min.js'));
+    if (!window.docxtemplater) tasks.push(load('https://unpkg.com/docxtemplater@3.33.0/build/docxtemplater.min.js'));
+    if (!window.saveAs) tasks.push(load('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js'));
+    if (!window.Papa) tasks.push(load('https://unpkg.com/papaparse@5.4.1/papaparse.min.js'));
+    return Promise.allSettled(tasks);
+  })();
+
   const rowsEl = document.getElementById('rows');
   const addRowBtn = document.getElementById('addRow');
   const templateFile = document.getElementById('templateFile');
@@ -161,6 +179,22 @@
   let vendorList = [];
   let projectNameList = [];
   let projectRowMap = new Map();
+
+  function waitForLibs() {
+    return new Promise(resolve => {
+      const check = () => {
+        if (window.PizZip && window.docxtemplater && window.saveAs && window.Papa) return resolve(true);
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  }
+
+  waitForLibs().then(() => {
+    generateDocxBtn.disabled = false;
+    if (generateStatus.textContent.includes('Upload a template')) return;
+    generateStatus.textContent = 'Libraries loaded. Upload a template to generate.';
+  });
 
   function formatMoney(value) {
     const raw = String(value || '').trim();
